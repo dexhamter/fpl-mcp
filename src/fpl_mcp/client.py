@@ -35,6 +35,13 @@ class FPLClient:
         """Open the HTTP session and authenticate if credentials are set."""
         self._session = aiohttp.ClientSession(headers=DEFAULT_HEADERS)
         if self.auth:
+            if self.auth.api_token:
+                self._session.headers.update(
+                    {
+                        "x-api-authorization": f"Bearer {self.auth.api_token}",
+                        "x-api-language": "en",
+                    }
+                )
             await self.auth.ensure_session(self._session)
             self.auth.apply_cookies(self._session)
 

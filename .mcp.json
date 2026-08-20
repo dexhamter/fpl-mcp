@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "fpl": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:/Users/hmmdy/Documents/fpl",
+        "run",
+        "fpl-mcp"
+      ]
+    }
+  }
+}

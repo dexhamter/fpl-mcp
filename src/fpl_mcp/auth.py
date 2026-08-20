@@ -29,11 +29,15 @@ class FPLAuth:
         password: str = "",
         session_file: Optional[str] = None,
         cookie: Optional[str] = None,
+        api_token: Optional[str] = None,
     ) -> None:
         self.email = email
         self.password = password
         self.session_file = Path(session_file or "fpl_session.json")
         self.raw_cookie = cookie or os.environ.get("FPL_COOKIE", "")
+        self.api_token = (api_token or os.environ.get("FPL_API_TOKEN", "")).strip()
+        if self.api_token.lower().startswith("bearer "):
+            self.api_token = self.api_token[7:].strip()
         self._cookies: dict[str, str] = {}
         if self.raw_cookie:
             self._parse_raw_cookie(self.raw_cookie)
@@ -61,6 +65,9 @@ class FPLAuth:
 
     async def ensure_session(self, session: aiohttp.ClientSession) -> None:
         """Ensure we have a valid session cookie, refreshing if necessary."""
+        # Bearer token auth needs no cookies or login
+        if self.api_token:
+            return
         # Try raw cookie or persisted cookies first
         if not self._cookies:
             self._load_cookies()

@@ -1,4 +1,4 @@
-﻿# ⚽ FPL MCP — Model Context Protocol Server for Fantasy Premier League
+# ⚽ FPL MCP — Model Context Protocol Server for Fantasy Premier League
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Standard](https://img.shields.io/badge/MCP-1.0%2B-green.svg)](https://modelcontextprotocol.io/)
@@ -14,7 +14,7 @@ An asynchronous **Model Context Protocol (MCP)** server for **Fantasy Premier Le
 - **🚀 33 Specialized Tools**: Complete coverage of official FPL endpoints (Bootstrap, Fixtures, FDR, Squad, History, Chips, Live Gameweek Scores, Mini-Leagues, Set-Piece Takers, Differentials, and Price Movers).
 - **🔒 Safe & Read-Only**: Focuses on deep analytics and AI recommendations without risky automated transfers.
 - **⚡ In-Memory TTL Caching**: Intelligent per-endpoint caching prevents rate limiting from FPL servers while keeping live gameweek scores fresh.
-- **🛡️ Public & Private Support**: Works immediately for public data with just a team ID. Supports session auth / cookies for private squad access.
+- **🛡️ Public & Private Support**: Works immediately for public data with just a team ID. Supports modern Bearer token authentication (`FPL_API_TOKEN` / `x-api-authorization`) for private squad and live pick access.
 - **🔌 Standard stdio Transport**: Plug-and-play with any MCP-compliant client.
 
 ---
@@ -26,7 +26,7 @@ fpl-mcp/
 ├── src/fpl_mcp/
 │   ├── server.py          # MCP Server entrypoint (stdio transport)
 │   ├── client.py          # Async FPL HTTP client with TTL caching
-│   ├── auth.py            # Session cookie & credential manager
+│   ├── auth.py            # Bearer token & session manager
 │   ├── cache.py           # In-memory thread-safe TTL cache
 │   ├── constants.py       # API endpoints, TTLs, positions & chip maps
 │   └── tools/
@@ -74,11 +74,26 @@ Edit `.env` with your team information:
 # Your FPL Team ID (found in the URL: https://fantasy.premierleague.com/entry/{ID}/event/1)
 FPL_TEAM_ID=1234567
 
-# Optional: FPL login credentials or browser session cookie for private team data
-FPL_EMAIL=your@email.com
-FPL_PASSWORD=your_password
-# FPL_COOKIE=pl_profile=...
+# Preferred auth: Bearer JWT copied from browser
+FPL_API_TOKEN=eyJhbGciOi...
+
+# Legacy fallbacks / optional persistence (cookie or session file)
+# FPL_COOKIE=
+# FPL_SESSION_FILE=fpl_session.json
 ```
+
+#### 🔑 How to Get Your `FPL_API_TOKEN`
+FPL uses Bearer token authentication via the `x-api-authorization` header rather than legacy `pl_profile` login cookies. To authenticate for private squad and live unconfirmed team data:
+1. Log in to [fantasy.premierleague.com](https://fantasy.premierleague.com).
+2. Open your browser DevTools (`F12` or Right-Click -> **Inspect**) and switch to the **Network** tab.
+3. Refresh the page or click **Pick Team** / **Transfers** / **Points**.
+4. Filter network requests by `api/` or `Fetch/XHR` and click any request (e.g., `my-team/...`).
+5. Under **Request Headers**, find `x-api-authorization`.
+6. Copy the token string (strip the leading `Bearer ` prefix).
+7. Paste it into your `.env` file as `FPL_API_TOKEN=...`.
+
+> [!NOTE]
+> `FPL_API_TOKEN` typically expires every ~8 hours. If private endpoints return `401 Unauthorized`, simply copy a fresh token from DevTools.
 
 ---
 
@@ -93,7 +108,9 @@ Add the server to your `~/.gemini/config/mcp_config.json`:
       "command": "C:/Users/your_user/Documents/fpl/.venv/Scripts/python.exe",
       "args": ["-m", "fpl_mcp.server"],
       "env": {
-        "PYTHONPATH": "C:/Users/your_user/Documents/fpl/src"
+        "PYTHONPATH": "C:/Users/your_user/Documents/fpl/src",
+        "FPL_TEAM_ID": "1234567",
+        "FPL_API_TOKEN": "your_token_here"
       }
     }
   }
@@ -112,7 +129,11 @@ Add to your `claude_desktop_config.json`:
         "/path/to/fpl-mcp",
         "run",
         "fpl-mcp"
-      ]
+      ],
+      "env": {
+        "FPL_TEAM_ID": "1234567",
+        "FPL_API_TOKEN": "your_token_here"
+      }
     }
   }
 }

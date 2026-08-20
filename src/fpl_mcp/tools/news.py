@@ -162,9 +162,28 @@ async def _get_set_piece_takers(
 
 
 async def _check_my_squad_news(client: FPLClient) -> list[types.TextContent]:
-    my_team = await client.get_my_team()
-    picks = my_team.get("picks", [])
-    my_ids = {p["element"] for p in picks}
+    my_ids = set()
+    try:
+        my_team = await client.get_my_team()
+        picks = my_team.get("picks", [])
+        my_ids = {p["element"] for p in picks}
+    except Exception:
+        bootstrap = await client.get_bootstrap()
+        events = bootstrap["events"]
+        current_gw = next((e["id"] for e in events if e.get("is_current")), 1)
+        try:
+            entry_picks = await client.get_entry_picks(gw=current_gw)
+            my_ids = {p["element"] for p in entry_picks.get("picks", [])}
+        except Exception:
+            from pathlib import Path
+            state_dir = Path("agent/state")
+            squad_files = sorted(state_dir.glob("squad-gw*.json"), reverse=True) if state_dir.exists() else []
+            if squad_files:
+                try:
+                    squad_data = json.loads(squad_files[0].read_text(encoding="utf-8"))
+                    my_ids = {p["id"] for p in squad_data.get("squad", [])}
+                except Exception:
+                    my_ids = set()
 
     bootstrap = await client.get_bootstrap()
     teams = {t["id"]: t["short_name"] for t in bootstrap["teams"]}

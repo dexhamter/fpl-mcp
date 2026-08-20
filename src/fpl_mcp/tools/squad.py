@@ -108,16 +108,30 @@ async def _get_my_squad(client: FPLClient) -> list[types.TextContent]:
             picks = entry_picks.get("picks", [])
             chips = []
         except Exception:
-            # Try entry info
-            entry_info = await client.get_entry()
-            return _text({
-                "team_id": entry_info.get("id"),
-                "team_name": entry_info.get("name"),
-                "manager": f"{entry_info.get('player_first_name')} {entry_info.get('player_last_name')}",
-                "overall_points": entry_info.get("summary_overall_points"),
-                "overall_rank": entry_info.get("summary_overall_rank"),
-                "status": "Team overview fetched. Squad picks unlock as gameweek starts, or provide FPL_COOKIE for live unconfirmed squad.",
-            })
+            # Fallback to local state snapshot if pre-season or unauthenticated
+            from pathlib import Path
+            state_dir = Path("agent/state")
+            squad_files = sorted(state_dir.glob("squad-gw*.json"), reverse=True) if state_dir.exists() else []
+            if squad_files:
+                try:
+                    squad_data = json.loads(squad_files[0].read_text(encoding="utf-8"))
+                    local_squad = squad_data.get("squad", [])
+                    picks = [{"element": p["id"], "position": i + 1, "is_captain": False, "is_vice_captain": False, "multiplier": 1} for i, p in enumerate(local_squad)]
+                    chips = squad_data.get("chips", [])
+                    transfers = squad_data.get("transfers", {})
+                except Exception:
+                    picks = []
+            
+            if not picks:
+                entry_info = await client.get_entry()
+                return _text({
+                    "team_id": entry_info.get("id"),
+                    "team_name": entry_info.get("name"),
+                    "manager": f"{entry_info.get('player_first_name')} {entry_info.get('player_last_name')}",
+                    "overall_points": entry_info.get("summary_overall_points"),
+                    "overall_rank": entry_info.get("summary_overall_rank"),
+                    "status": "Team overview fetched. Squad picks unlock as gameweek starts, or provide FPL_API_TOKEN for live unconfirmed squad.",
+                })
 
     enriched = []
     for pick in picks:
@@ -162,9 +176,9 @@ async def _get_entry_info(
         "overall_rank": entry["summary_overall_rank"],
         "gw_points": entry["summary_event_points"],
         "gw_rank": entry["summary_event_rank"],
-        "team_value": entry["last_deadline_value"] / 10,
-        "bank": entry["last_deadline_bank"] / 10,
-        "total_transfers": entry["last_deadline_total_transfers"],
+        "team_value": (entry["last_deadline_value"] / 10) if entry.get("last_deadline_value") is not None else 100.0,
+        "bank": (entry["last_deadline_bank"] / 10) if entry.get("last_deadline_bank") is not None else 0.0,
+        "total_transfers": entry.get("last_deadline_total_transfers", 0),
         "leagues": {
             "classic": [
                 {"id": l["id"], "name": l["name"], "rank": l["entry_rank"]}

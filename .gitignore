@@ -34,3 +34,16 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Agent & Workspace State / Instructions
+agent/
+.agents/
+.qoder/
+qoder/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.cursor/
+.copilot/
+copilot-instructions.md
