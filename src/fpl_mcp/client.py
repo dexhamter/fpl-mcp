@@ -22,7 +22,7 @@ class FPLClient:
     """Async FPL API client with caching and optional session auth."""
 
     def __init__(self, auth: Optional[FPLAuth] = None) -> None:
-        self.auth = auth
+        self.auth = auth if auth is not None else FPLAuth.from_env()
         self.cache = TTLCache()
         self._session: Optional[aiohttp.ClientSession] = None
         self._team_id: Optional[int] = None
@@ -38,6 +38,7 @@ class FPLClient:
             if self.auth.api_token:
                 self._session.headers.update(
                     {
+                        "Authorization": f"Bearer {self.auth.api_token}",
                         "x-api-authorization": f"Bearer {self.auth.api_token}",
                         "x-api-language": "en",
                     }

@@ -29,16 +29,17 @@ logger = logging.getLogger(__name__)
 
 def _build_client() -> FPLClient:
     """Construct the FPLClient, attaching auth if credentials are available."""
+    token = os.environ.get("FPL_API_TOKEN", "")
+    cookie = os.environ.get("FPL_COOKIE", "")
     email = os.environ.get("FPL_EMAIL", "")
     password = os.environ.get("FPL_PASSWORD", "")
-    if email and password:
+    if token or cookie or (email and password):
         auth = FPLAuth.from_env()
-        logger.info("Auth configured for %s", email)
+        logger.info("Auth configured")
     else:
         auth = None
         logger.warning(
-            "No FPL_EMAIL/FPL_PASSWORD set. Authenticated endpoints will not work. "
-            "Copy .env.example to .env and fill in your credentials."
+            "No auth configured (FPL_API_TOKEN/FPL_COOKIE/FPL_EMAIL). Authenticated endpoints will not work."
         )
     return FPLClient(auth=auth)
 
